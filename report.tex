@@ -6,6 +6,7 @@
 \usepackage{hyperref}
 \usepackage{listings}
 \usepackage{xcolor}
+\usepackage{float}
 
 \definecolor{codegray}{rgb}{0.5,0.5,0.5}
 \definecolor{codepurple}{rgb}{0.58,0,0.82}
@@ -32,13 +33,23 @@
 
 \lstset{style=mystyle}
 
-\title{\textbf{Experiment Report: Sentiment Analysis Using Pretrained BERT Model}}
-\author{\textbf{Name:} zain pawle \\ \textbf{Roll No:} 25dco08 \\ \textbf{Batch:} 3 \\ \textbf{Class:} TECO1}
-\date{\today}
-
 \begin{document}
 
-\maketitle
+% Top Personal Details Section
+\begin{center}
+    \textbf{Name:} zain pawle \quad|\quad \textbf{Roll No:} 25dco08 \\
+    \textbf{Batch:} 3 \quad|\quad \textbf{Class:} TECO1
+\end{center}
+\vspace{0.2cm}
+\hrule height 1.5pt
+\vspace{0.5cm}
+
+% Title
+\begin{center}
+    {\Large \textbf{Experiment Report: Sentiment Analysis Using Pretrained BERT Model}} \\[0.2cm]
+    \date{\today}
+\end{center}
+\vspace{0.3cm}
 
 \section{Aim}
 To implement a Sentiment Analysis application using a pretrained BERT model (DistilBERT fine-tuned on SST-2) with a FastAPI web backend and HTML/CSS/JS frontend interface.
@@ -82,8 +93,9 @@ Where $z_c$ is the logit score corresponding to sentiment class $c \in \{\text{P
     \item \textbf{\texttt{uvicorn}}: ASGI web server to execute FastAPI applications.
 \end{itemize}
 
-\section{Source Code}
-\subsection{Backend Code (\texttt{app.py})}
+\section{Complete Source Code}
+
+\subsection{Backend Application (\texttt{app.py})}
 \begin{lstlisting}[language=Python]
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
@@ -111,24 +123,252 @@ def analyze_sentiment(request: TextRequest):
     return {"label": result["label"], "score": round(float(result["score"]), 4)}
 \end{lstlisting}
 
-\section{Output}
-\begin{itemize}
-    \item \textbf{Input 1}: "Implementing sentiment analysis with pretrained BERT model is super easy and efficient!"
-    \item \textbf{Result 1}: \texttt{POSITIVE} (Confidence Score: $99.96\%$)
-    \item \textbf{Input 2}: "This service is terrible and disappointing."
-    \item \textbf{Result 2}: \texttt{NEGATIVE} (Confidence Score: $99.98\%$)
-\end{itemize}
+\subsection{Frontend Markup (\texttt{static/index.html})}
+\begin{lstlisting}[language=HTML]
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BERT Sentiment Analysis</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Sentiment Analysis with BERT</h1>
+        <p class="subtitle">Pretrained Transformer Model (DistilBERT)</p>
+
+        <div class="card">
+            <textarea id="inputText" placeholder="Type your text here to analyze sentiment..."></textarea>
+            <button id="analyzeBtn" onclick="analyzeSentiment()">Analyze Sentiment</button>
+            <div id="result" class="result hidden"></div>
+        </div>
+
+        <footer>
+            <p><strong>Student:</strong> zain pawle | <strong>Roll No:</strong> 25dco08 | <strong>Batch:</strong> 3 | <strong>Class:</strong> TECO1</p>
+        </footer>
+    </div>
+
+    <script>
+        async function analyzeSentiment() {
+            const text = document.getElementById('inputText').value;
+            const resultDiv = document.getElementById('result');
+            const btn = document.getElementById('analyzeBtn');
+
+            if (!text.trim()) {
+                resultDiv.className = 'result error';
+                resultDiv.innerText = 'Please enter some text!';
+                resultDiv.classList.remove('hidden');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerText = 'Analyzing...';
+            resultDiv.classList.add('hidden');
+
+            try {
+                const response = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text })
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    const isPos = data.label === 'POSITIVE';
+                    resultDiv.className = `result ${isPos ? 'positive' : 'negative'}`;
+                    resultDiv.innerHTML = `<strong>Sentiment:</strong> ${data.label}<br><strong>Confidence:</strong> ${(data.score * 100).toFixed(2)}%`;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.innerText = data.detail || 'An error occurred.';
+                }
+            } catch (err) {
+                resultDiv.className = 'result error';
+                resultDiv.innerText = 'Failed to connect to backend server.';
+            } finally {
+                btn.disabled = false;
+                btn.innerText = 'Analyze Sentiment';
+                resultDiv.classList.remove('hidden');
+            }
+        }
+    </script>
+</body>
+</html>
+\end{lstlisting}
+
+\subsection{Frontend Styles (\texttt{static/style.css})}
+\begin{lstlisting}[language=SQL]
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    background: #f0f2f5;
+    color: #333;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.container {
+    width: 100%;
+    max-width: 600px;
+}
+
+h1 {
+    font-size: 1.8rem;
+    text-align: center;
+    color: #1a202c;
+}
+
+.subtitle {
+    text-align: center;
+    color: #718096;
+    margin-bottom: 20px;
+    font-size: 0.95rem;
+}
+
+.card {
+    background: #ffffff;
+    padding: 24px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+textarea {
+    width: 100%;
+    height: 120px;
+    padding: 12px;
+    border: 1px solid #cbd5e0;
+    border-radius: 8px;
+    resize: none;
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+textarea:focus {
+    border-color: #3182ce;
+}
+
+button {
+    width: 100%;
+    margin-top: 16px;
+    padding: 12px;
+    background-color: #3182ce;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+button:hover {
+    background-color: #2b6cb0;
+}
+
+button:disabled {
+    background-color: #a0aec0;
+    cursor: not-allowed;
+}
+
+.result {
+    margin-top: 20px;
+    padding: 14px;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 1.05rem;
+}
+
+.result.positive {
+    background-color: #c6f6d5;
+    color: #22543d;
+    border: 1px solid #9ae6b4;
+}
+
+.result.negative {
+    background-color: #fed7d7;
+    color: #742a2a;
+    border: 1px solid #feb2b2;
+}
+
+.result.error {
+    background-color: #feebc8;
+    color: #744210;
+    border: 1px solid #fbd38d;
+}
+
+.hidden {
+    display: none;
+}
+
+footer {
+    margin-top: 24px;
+    text-align: center;
+    font-size: 0.85rem;
+    color: #4a5568;
+}
+\end{lstlisting}
+
+\subsection{Unit Test Suite (\texttt{test\_app.py})}
+\begin{lstlisting}[language=Python]
+import pytest
+from fastapi.testclient import TestClient
+from app import app
+
+client = TestClient(app)
+
+def test_read_root():
+    response = client.get("/")
+    assert response.status_code == 200
+    assert "BERT Sentiment Analysis" in response.text
+
+def test_analyze_positive():
+    response = client.post("/api/analyze", json={"text": "I love this product, it works amazingly well!"})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["label"] == "POSITIVE"
+    assert "score" in data
+    assert data["score"] > 0.5
+
+def test_analyze_negative():
+    response = client.post("/api/analyze", json={"text": "This service is terrible and disappointing."})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["label"] == "NEGATIVE"
+    assert "score" in data
+    assert data["score"] > 0.5
+
+def test_analyze_empty():
+    response = client.post("/api/analyze", json={"text": "   "})
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Text cannot be empty."
+\end{lstlisting}
+
+\section{Output Screenshots}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{static/images/positive_example.png}
+    \caption{Positive Sentiment Output Example}
+    \label{fig:positive}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{static/images/negative_example.png}
+    \caption{Negative Sentiment Output Example}
+    \label{fig:negative}
+\end{figure}
 
 \section{Conclusion}
 The Sentiment Analysis web system was successfully implemented using a pretrained DistilBERT transformer model paired with FastAPI and a modern HTML/CSS interface.
-
-\vspace{1cm}
-\noindent \textbf{Student Information:}
-\begin{itemize}
-    \item \textbf{Name}: zain pawle
-    \item \textbf{Roll No}: 25dco08
-    \item \textbf{Batch}: 3
-    \item \textbf{Class}: TECO1
-\end{itemize}
 
 \end{document}
