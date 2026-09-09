@@ -1,7 +1,7 @@
 # Sentiment Analysis Using Pretrained BERT Model
 
 ## Aim
-To implement a Sentiment Analysis web application using a pretrained BERT model (DistilBERT fine-tuned on SST-2) with FastAPI backend and HTML/CSS/JS frontend.
+To implement a Sentiment Analysis web application using a pretrained BERT model (`textattack/bert-base-uncased-SST-2`) with FastAPI backend and HTML/CSS/JS frontend.
 
 ## Theory
 Bidirectional Encoder Representations from Transformers (BERT) is a transformer-based machine learning technique for natural language processing (NLP) developed by Google. Standard BERT is trained bidirectionally to understand context from both left-to-right and right-to-left.
@@ -31,7 +31,7 @@ For Sentiment Analysis, a pretrained transformer model processes input tokens, p
    where $z_c$ is the logit output for sentiment class $c \in \{\text{POSITIVE}, \text{NEGATIVE}\}$.
 
 ## Libraries Used
-- **`transformers`**: Hugging Face library providing access to pretrained DistilBERT models.
+- **`transformers`**: Hugging Face library providing `AutoTokenizer` and `AutoModelForSequenceClassification` for BERT.
 - **`torch`**: PyTorch tensor computation and deep learning framework.
 - **`fastapi`**: Modern, fast web framework for building APIs with Python.
 - **`uvicorn`**: ASGI server implementation for hosting FastAPI.
@@ -42,21 +42,30 @@ For Sentiment Analysis, a pretrained transformer model processes input tokens, p
 ├── app.py
 ├── static/
 │   ├── index.html
-│   └── style.css
+│   ├── style.css
+│   └── images/
 ├── test_app.py
+├── report.tex
+├── report.pdf
 └── README.md
 ```
 
 ## Sample Code Overview (`app.py`)
 ```python
-from fastapi import FastAPI
+import torch
+import torch.nn.functional as F
+from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
-from transformers import pipeline
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
-app = FastAPI()
-classifier = pipeline("sentiment-analysis", model="distilbert-base-uncased-finetuned-sst-2-english")
+app = FastAPI(title="BERT Sentiment Analysis API")
+
+MODEL_NAME = "textattack/bert-base-uncased-SST-2"
+tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME)
+model.eval()
 
 class TextRequest(BaseModel):
     text: str
@@ -69,18 +78,29 @@ def read_root():
 
 @app.post("/api/analyze")
 def analyze_sentiment(request: TextRequest):
-    result = classifier(request.text)[0]
-    return {"label": result["label"], "score": round(result["score"], 4)}
+    text = request.text.strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="Text cannot be empty.")
+
+    inputs = tokenizer(text, return_tensors="pt", truncation=True, max_length=512)
+
+    with torch.no_grad():
+        outputs = model(**inputs)
+        probabilities = F.softmax(outputs.logits, dim=-1)
+        confidence, prediction = torch.max(probabilities, dim=-1)
+
+    label_map = {0: "NEGATIVE", 1: "POSITIVE"}
+    return {"label": label_map[prediction.item()], "score": round(float(confidence.item()), 4)}
 ```
 
 ## Sample Output
-- **Input Text**: `"I absolutely love working with modern transformer models!"`
-- **Result**: `POSITIVE` (Confidence Score: `0.9999`)
-- **Input Text**: `"This experience was disappointing and frustrating."`
+- **Input Text**: `"Implementing sentiment analysis with pretrained BERT model is super easy, clean, and highly accurate!"`
+- **Result**: `POSITIVE` (Confidence Score: `0.9992`)
+- **Input Text**: `"The overall product quality was extremely poor, buggy, and completely unsatisfactory."`
 - **Result**: `NEGATIVE` (Confidence Score: `0.9998`)
 
 ## Conclusion
-The Sentiment Analysis web application was successfully implemented using a pretrained DistilBERT model integrated with FastAPI and a modern HTML/CSS interface.
+The Sentiment Analysis web application was successfully implemented using a pretrained BERT model (`textattack/bert-base-uncased-SST-2`) integrated with FastAPI and a modern HTML/CSS interface.
 
 - **Name**: zain pawle
 - **Roll No**: 25dco08

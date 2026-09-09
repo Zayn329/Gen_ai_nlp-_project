@@ -52,12 +52,12 @@
 \vspace{0.3cm}
 
 \section{Aim}
-To implement a Sentiment Analysis application using a pretrained BERT model (DistilBERT fine-tuned on SST-2) with a FastAPI web backend and HTML/CSS/JS frontend interface.
+To implement a Sentiment Analysis application using a pretrained BERT model (\texttt{textattack/bert-base-uncased-SST-2}) with PyTorch, a FastAPI web backend, and an HTML/CSS/JS frontend interface.
 
 \section{Theory}
 Bidirectional Encoder Representations from Transformers (BERT) is a transformer-based machine learning framework developed by Google for Natural Language Processing (NLP). Standard sequential models (like LSTMs) read text left-to-right or right-to-left sequentially. In contrast, BERT reads the entire sequence of words at once using bidirectional attention mechanisms.
 
-In this project, DistilBERT—a smaller, faster, and lighter transformer model distilled from BERT—is used. It retains 97\% of BERT's language understanding capabilities while being 60\% faster. For sentiment classification, input text is tokenized with Special Tokens ([CLS], [SEP]) and passed through self-attention layers to compute a dense feature representation. A standard linear classification head with a Softmax output layer predicts the sentiment label (POSITIVE or NEGATIVE).
+In this project, the \texttt{textattack/bert-base-uncased-SST-2} model—a BERT base model fine-tuned specifically on the Stanford Sentiment Treebank (SST-2) dataset—is loaded using Hugging Face's \texttt{AutoTokenizer} and \texttt{AutoModelForSequenceClassification}. Input text is tokenized with Special Tokens (\texttt{[CLS]}, \texttt{[SEP]}) and passed through BERT's multi-head self-attention layers to compute token representations. PyTorch computes the output logits, which are then passed through a Softmax function to obtain probabilities for \texttt{POSITIVE} and \texttt{NEGATIVE} sentiment classes.
 
 \section{Software and Hardware Requirements}
 \subsection{Software Requirements}
@@ -87,24 +87,31 @@ Where $z_c$ is the logit score corresponding to sentiment class $c \in \{\text{P
 
 \section{Libraries Used}
 \begin{itemize}
-    \item \textbf{\texttt{transformers}}: Provides pretrained transformer pipelines.
-    \item \textbf{\texttt{torch}}: Deep learning computation framework underlying HuggingFace models.
-    \item \textbf{\texttt{fastapi}}: High-performance web framework for constructing APIs.
-    \item \textbf{\texttt{uvicorn}}: ASGI web server to execute FastAPI applications.
+    \item \textbf{\texttt{transformers}}: Provides pretrained \texttt{AutoTokenizer} and \texttt{AutoModelForSequenceClassification} for BERT.
+    \item \textbf{\texttt{torch}}: PyTorch tensor computation and deep learning framework for forward pass calculation.
+    \item \textbf{\texttt{fastapi}}: High-performance web framework for constructing RESTful API endpoints.
+    \item \textbf{\texttt{uvicorn}}: ASGI web server to host and run FastAPI applications.
 \end{itemize}
 
 \section{Complete Source Code}
 
 \subsection{Backend Application (\texttt{app.py})}
 \begin{lstlisting}[language=Python]
+import torch
+import torch.nn.functional as F
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
-from transformers import pipeline
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
-app = FastAPI(title="Sentiment Analysis API")
-classifier = pipeline("sentiment-analysis", model="distilbert-base-uncased-finetuned-sst-2-english")
+app = FastAPI(title="BERT Sentiment Analysis API")
+
+# Explicit BERT base model fine-tuned on SST-2
+MODEL_NAME = "textattack/bert-base-uncased-SST-2"
+tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME)
+model.eval()
 
 class TextRequest(BaseModel):
     text: str
@@ -117,10 +124,25 @@ def read_root():
 
 @app.post("/api/analyze")
 def analyze_sentiment(request: TextRequest):
-    if not request.text.strip():
+    text = request.text.strip()
+    if not text:
         raise HTTPException(status_code=400, detail="Text cannot be empty.")
-    result = classifier(request.text)[0]
-    return {"label": result["label"], "score": round(float(result["score"]), 4)}
+
+    # Tokenize input sequence using BERT Tokenizer
+    inputs = tokenizer(text, return_tensors="pt", truncation=True, max_length=512)
+
+    # Perform forward pass through BERT model using PyTorch
+    with torch.no_grad():
+        outputs = model(**inputs)
+        logits = outputs.logits
+        probabilities = F.softmax(logits, dim=-1)
+        confidence, prediction = torch.max(probabilities, dim=-1)
+
+    label_map = {0: "NEGATIVE", 1: "POSITIVE"}
+    predicted_label = label_map[prediction.item()]
+    confidence_score = round(float(confidence.item()), 4)
+
+    return {"label": predicted_label, "score": confidence_score}
 \end{lstlisting}
 
 \subsection{Frontend Markup (\texttt{static/index.html})}
@@ -369,6 +391,6 @@ def test_analyze_empty():
 \end{figure}
 
 \section{Conclusion}
-The Sentiment Analysis web system was successfully implemented using a pretrained DistilBERT transformer model paired with FastAPI and a modern HTML/CSS interface.
+The Sentiment Analysis web system was successfully implemented using a pretrained BERT model (\texttt{textattack/bert-base-uncased-SST-2}) paired with PyTorch, FastAPI, and a modern HTML/CSS interface.
 
 \end{document}
