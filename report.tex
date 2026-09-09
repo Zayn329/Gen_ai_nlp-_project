@@ -1,0 +1,134 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegray},
+    keywordstyle=\color{blue},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=left,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2
+}
+
+\lstset{style=mystyle}
+
+\title{\textbf{Experiment Report: Sentiment Analysis Using Pretrained BERT Model}}
+\author{\textbf{Name:} zain pawle \\ \textbf{Roll No:} 25dco08 \\ \textbf{Batch:} 3 \\ \textbf{Class:} TECO1}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Aim}
+To implement a Sentiment Analysis application using a pretrained BERT model (DistilBERT fine-tuned on SST-2) with a FastAPI web backend and HTML/CSS/JS frontend interface.
+
+\section{Theory}
+Bidirectional Encoder Representations from Transformers (BERT) is a transformer-based machine learning framework developed by Google for Natural Language Processing (NLP). Standard sequential models (like LSTMs) read text left-to-right or right-to-left sequentially. In contrast, BERT reads the entire sequence of words at once using bidirectional attention mechanisms.
+
+In this project, DistilBERT—a smaller, faster, and lighter transformer model distilled from BERT—is used. It retains 97\% of BERT's language understanding capabilities while being 60\% faster. For sentiment classification, input text is tokenized with Special Tokens ([CLS], [SEP]) and passed through self-attention layers to compute a dense feature representation. A standard linear classification head with a Softmax output layer predicts the sentiment label (POSITIVE or NEGATIVE).
+
+\section{Software and Hardware Requirements}
+\subsection{Software Requirements}
+\begin{itemize}
+    \item \textbf{Operating System}: Linux / macOS / Windows
+    \item \textbf{Language/Runtime}: Python 3.10+
+    \item \textbf{Core Libraries}: \texttt{fastapi}, \texttt{uvicorn}, \texttt{transformers}, \texttt{torch}, \texttt{pydantic}
+    \item \textbf{Frontend Stack}: HTML5, CSS3, JavaScript (Fetch API)
+\end{itemize}
+
+\subsection{Hardware Requirements}
+\begin{itemize}
+    \item \textbf{Processor}: Intel Core i5 / AMD Ryzen 5 or higher
+    \item \textbf{RAM}: Minimum 8 GB (16 GB recommended)
+    \item \textbf{Storage}: $\sim 2$ GB free space for deep learning dependencies and model weights
+    \item \textbf{GPU}: Optional (NVIDIA CUDA support enabled; CPU execution fully supported)
+\end{itemize}
+
+\section{Mathematical Formulae}
+\subsection{Self-Attention Mechanism}
+$$\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V$$
+Where $Q$, $K$, and $V$ are Query, Key, and Value matrices derived from token embeddings, and $d_k$ is the dimensionality of key vectors.
+
+\subsection{Softmax Classification Output}
+$$P(y = c \mid x) = \frac{e^{z_c}}{\sum_{j=1}^{C} e^{z_j}}$$
+Where $z_c$ is the logit score corresponding to sentiment class $c \in \{\text{POSITIVE}, \text{NEGATIVE}\}$.
+
+\section{Libraries Used}
+\begin{itemize}
+    \item \textbf{\texttt{transformers}}: Provides pretrained transformer pipelines.
+    \item \textbf{\texttt{torch}}: Deep learning computation framework underlying HuggingFace models.
+    \item \textbf{\texttt{fastapi}}: High-performance web framework for constructing APIs.
+    \item \textbf{\texttt{uvicorn}}: ASGI web server to execute FastAPI applications.
+\end{itemize}
+
+\section{Source Code}
+\subsection{Backend Code (\texttt{app.py})}
+\begin{lstlisting}[language=Python]
+from fastapi import FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+from pydantic import BaseModel
+from transformers import pipeline
+
+app = FastAPI(title="Sentiment Analysis API")
+classifier = pipeline("sentiment-analysis", model="distilbert-base-uncased-finetuned-sst-2-english")
+
+class TextRequest(BaseModel):
+    text: str
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+@app.get("/")
+def read_root():
+    return FileResponse("static/index.html")
+
+@app.post("/api/analyze")
+def analyze_sentiment(request: TextRequest):
+    if not request.text.strip():
+        raise HTTPException(status_code=400, detail="Text cannot be empty.")
+    result = classifier(request.text)[0]
+    return {"label": result["label"], "score": round(float(result["score"]), 4)}
+\end{lstlisting}
+
+\section{Output}
+\begin{itemize}
+    \item \textbf{Input 1}: "Implementing sentiment analysis with pretrained BERT model is super easy and efficient!"
+    \item \textbf{Result 1}: \texttt{POSITIVE} (Confidence Score: $99.96\%$)
+    \item \textbf{Input 2}: "This service is terrible and disappointing."
+    \item \textbf{Result 2}: \texttt{NEGATIVE} (Confidence Score: $99.98\%$)
+\end{itemize}
+
+\section{Conclusion}
+The Sentiment Analysis web system was successfully implemented using a pretrained DistilBERT transformer model paired with FastAPI and a modern HTML/CSS interface.
+
+\vspace{1cm}
+\noindent \textbf{Student Information:}
+\begin{itemize}
+    \item \textbf{Name}: zain pawle
+    \item \textbf{Roll No}: 25dco08
+    \item \textbf{Batch}: 3
+    \item \textbf{Class}: TECO1
+\end{itemize}
+
+\end{document}

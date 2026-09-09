@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BERT Sentiment Analysis</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Sentiment Analysis with BERT</h1>
+        <p class="subtitle">Pretrained Transformer Model (DistilBERT)</p>
+
+        <div class="card">
+            <textarea id="inputText" placeholder="Type your text here to analyze sentiment..."></textarea>
+            <button id="analyzeBtn" onclick="analyzeSentiment()">Analyze Sentiment</button>
+            <div id="result" class="result hidden"></div>
+        </div>
+
+        <footer>
+            <p><strong>Student:</strong> zain pawle | <strong>Roll No:</strong> 25dco08 | <strong>Batch:</strong> 3 | <strong>Class:</strong> TECO1</p>
+        </footer>
+    </div>
+
+    <script>
+        async function analyzeSentiment() {
+            const text = document.getElementById('inputText').value;
+            const resultDiv = document.getElementById('result');
+            const btn = document.getElementById('analyzeBtn');
+
+            if (!text.trim()) {
+                resultDiv.className = 'result error';
+                resultDiv.innerText = 'Please enter some text!';
+                resultDiv.classList.remove('hidden');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerText = 'Analyzing...';
+            resultDiv.classList.add('hidden');
+
+            try {
+                const response = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text })
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    const isPos = data.label === 'POSITIVE';
+                    resultDiv.className = `result ${isPos ? 'positive' : 'negative'}`;
+                    resultDiv.innerHTML = `<strong>Sentiment:</strong> ${data.label}<br><strong>Confidence:</strong> ${(data.score * 100).toFixed(2)}%`;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.innerText = data.detail || 'An error occurred.';
+                }
+            } catch (err) {
+                resultDiv.className = 'result error';
+                resultDiv.innerText = 'Failed to connect to backend server.';
+            } finally {
+                btn.disabled = false;
+                btn.innerText = 'Analyze Sentiment';
+                resultDiv.classList.remove('hidden');
+            }
+        }
+    </script>
+</body>
+</html>
